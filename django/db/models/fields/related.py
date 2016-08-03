@@ -695,7 +695,7 @@ def create_foreign_related_manager(superclass, rel_field, rel_model):
             cache_name = rel_field.related_query_name()
             return queryset, rel_obj_attr, instance_attr, False, cache_name
 
-        def add(self, *objs):
+        def add(self, *objs, **kwargs):
             objs = list(objs)
             db = router.db_for_write(self.model, instance=self.instance)
             with transaction.commit_on_success_unless_managed(
@@ -914,7 +914,7 @@ def create_many_related_manager(superclass, rel):
                     False,
                     self.prefetch_cache_name)
 
-        def add(self, *objs):
+        def add(self, *objs, **kwargs):
             if not rel.through._meta.auto_created:
                 opts = self.through._meta
                 raise AttributeError(
