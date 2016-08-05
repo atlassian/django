@@ -39,7 +39,7 @@ class BaseDatabaseWrapper(object):
         self.queries = []
         self.settings_dict = settings_dict
         self.alias = alias
-        self.use_debug_cursor = False
+        self.force_debug_cursor = False
 
         # Savepoint management related attributes
         self.savepoint_state = 0
@@ -84,7 +84,7 @@ class BaseDatabaseWrapper(object):
 
     @property
     def queries_logged(self):
-        return self.use_debug_cursor or settings.DEBUG
+        return self.force_debug_cursor or settings.DEBUG
 
     ##### Backend-specific methods for creating connections and cursors #####
 
