@@ -131,7 +131,7 @@ class ContextTests(SimpleTestCase):
         a.update({'b': 4})
         a.update({'c': 8})
 
-        self.assertEqual(a.flatten(), {
+        self.assertDictEqual(a.flatten(), {
             'False': False, 'None': None, 'True': True,
             'a': 2, 'b': 4, 'c': 8
         })
@@ -148,6 +148,19 @@ class ContextTests(SimpleTestCase):
             'True': True,
             'a': 2,
             'z': '8',
+        })
+
+    def test_flatten_context_new_context(self):
+        """
+        Context.new with a Context argument should work.
+        """
+        a = Context({'a': 2})
+        b = a.new(Context({'b': 4}))
+        self.assertEqual(b.flatten(), {
+            'False': False,
+	    'None': None,
+	    'True': True,
+            'b': 4
         })
 
     def test_context_comparable(self):
