@@ -61,6 +61,19 @@ class ContextTests(TestCase):
             'a': 2, 'b': 4, 'c': 8
         })
 
+    def test_flatten_context_new_context(self):
+        """
+        Context.new with a Context argument should work.
+        """
+        a = Context({'a': 2})
+        b = a.new(Context({'b': 4}))
+        self.assertDictEqual(b.flatten(), {
+            'False': False,
+	    'None': None,
+	    'True': True,
+            'b': 4
+        })
+
     def test_context_comparable(self):
         test_data = {'x': 'y', 'v': 'z', 'd': {'o': object, 'a': 'b'}}
 
