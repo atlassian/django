@@ -914,7 +914,7 @@ def create_many_related_manager(superclass, rel):
                     False,
                     self.prefetch_cache_name)
 
-        def add(self, *objs, **kwargs):
+        def add(self, *objs):
             if not rel.through._meta.auto_created:
                 opts = self.through._meta
                 raise AttributeError(
