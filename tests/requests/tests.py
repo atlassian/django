@@ -11,7 +11,7 @@ from django.db import connection, connections
 from django.core import signals
 from django.core.exceptions import SuspiciousOperation
 from django.core.handlers.wsgi import WSGIRequest, LimitedStream
-from django.http import (HttpRequest, HttpResponse, parse_cookie,
+from django.http import (HttpRequest, HttpResponse,
     build_request_repr, UnreadablePostError, RawPostDataException)
 from django.test import SimpleTestCase, TransactionTestCase, override_settings
 from django.test.client import FakePayload
@@ -127,9 +127,6 @@ class RequestsTests(SimpleTestCase):
         # Regression for #19468
         request = WSGIRequest({'PATH_INFO': wsgi_str("/سلام/"), 'REQUEST_METHOD': 'get', 'wsgi.input': BytesIO(b'')})
         self.assertEqual(request.path, "/سلام/")
-
-    def test_parse_cookie(self):
-        self.assertEqual(parse_cookie('invalid@key=true'), {})
 
     def test_httprequest_location(self):
         request = HttpRequest()
