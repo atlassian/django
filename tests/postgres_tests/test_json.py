@@ -7,6 +7,9 @@ from decimal import Decimal
 from django.core import exceptions, serializers
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import connection
+from django.db.models import F, OuterRef, Subquery
+from django.db.models.expressions import RawSQL
+from django.db.models.functions import Cast
 from django.forms import CharField, Form, widgets
 from django.test import skipUnlessDBFeature
 from django.test.utils import CaptureQueriesContext
@@ -18,6 +21,9 @@ from .models import JSONModel
 try:
     from django.contrib.postgres import forms
     from django.contrib.postgres.fields import JSONField
+    from django.contrib.postgres.fields.jsonb import (
+        KeyTextTransform, KeyTransform
+    )
 except ImportError:
     pass
 
@@ -126,7 +132,12 @@ class TestQuerying(PostgreSQLTestCase):
                 'k': True,
                 'l': False,
             }),
-            JSONModel.objects.create(field={'foo': 'bar'}),
+            JSONModel.objects.create(field={
+                'foo': 'bar',
+                'baz': {'a': 'b', 'c': 'd'},
+                'bar': ['foo', 'bar'],
+                'bax': {'foo': 'bar'},
+            }),
         ]
 
     def test_exact(self):
@@ -145,6 +156,24 @@ class TestQuerying(PostgreSQLTestCase):
         self.assertSequenceEqual(
             JSONModel.objects.filter(field__isnull=True),
             [self.objs[0]]
+        )
+
+    def test_key_transform_raw_expression(self):
+        expr = RawSQL('%s::jsonb', ['{"x": "bar"}'])
+        self.assertSequenceEqual(
+            JSONModel.objects.filter(field__foo=KeyTransform('x', expr)),
+            [self.objs[-1]],
+        )
+
+    def test_key_transform_expression(self):
+        self.assertSequenceEqual(
+            JSONModel.objects.filter(field__d__0__isnull=False).annotate(
+                key=KeyTransform('d', 'field'),
+            ).annotate(
+                chain=KeyTransform('0', 'key'),
+                expr=KeyTransform('0', Cast('key', JSONField())),
+            ).filter(chain=F('expr')),
+            [self.objs[8]],
         )
 
     def test_isnull_key(self):
@@ -199,6 +228,12 @@ class TestQuerying(PostgreSQLTestCase):
             JSONModel.objects.filter(field__a='b'),
             [self.objs[7], self.objs[8]]
         )
+
+    def test_obj_subquery_lookup(self):
+        qs = JSONModel.objects.annotate(
+            value=Subquery(JSONModel.objects.filter(pk=OuterRef('pk')).values('field')),
+        ).filter(value__a='b')
+        self.assertSequenceEqual(qs, [self.objs[7], self.objs[8]])
 
     def test_deep_lookup_objs(self):
         self.assertSequenceEqual(
@@ -276,6 +311,25 @@ class TestQuerying(PostgreSQLTestCase):
             """."field" -> 'test'' = ''"a"'') OR 1 = 1 OR (''d') = '"x"' """,
             queries[0]['sql'],
         )
+
+    def test_lookups_with_key_transform(self):
+        tests = (
+            ('field__d__contains', 'e'),
+            ('field__baz__contained_by', {'a': 'b', 'c': 'd', 'e': 'f'}),
+            ('field__baz__has_key', 'c'),
+            ('field__baz__has_keys', ['a', 'c']),
+            ('field__baz__has_any_keys', ['a', 'x']),
+            ('field__contains', KeyTransform('bax', 'field')),
+            (
+                'field__contained_by',
+                KeyTransform('x', RawSQL('%s::jsonb', ['{"x": {"a": "b", "c": 1, "d": "e"}}'])),
+            ),
+            ('field__has_key', KeyTextTransform('foo', 'field')),
+        )
+        for lookup, value in tests:
+            self.assertTrue(JSONModel.objects.filter(
+                **{lookup: value}
+            ).exists())
 
 
 @skipUnlessDBFeature('has_jsonb_datatype')
